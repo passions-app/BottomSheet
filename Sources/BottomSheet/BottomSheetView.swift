@@ -15,6 +15,8 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
     private let hasBottomPosition: Bool
     private let resizeable: Bool
     private let showCancelButton: Bool
+    private let swipeToDismiss: Bool
+    private let tapToDismiss: Bool
     private let headerContent: hContent?
     private let mainContent: mContent
     private let closeAction: () -> ()
@@ -23,6 +25,15 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
     
     fileprivate var body: some View {
         GeometryReader { geometry in
+            if tapToDismiss {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .frame(width: geometry.size.width, height: max((geometry.size.height * (1 - self.bottomSheetPosition.rawValue)) - self.translation, 0), alignment: .top)
+                    .allowsHitTesting(self.bottomSheetPosition.rawValue != 0)
+                    .onTapGesture {
+                        closeSheet()
+                    }
+            }
             VStack(spacing: 0) {
                 if self.resizeable {
                     Capsule()
@@ -46,13 +57,7 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
                         
                         if self.showCancelButton {
                             Button(action: {
-                                if let hidden = bottomSheetPositionEnum(rawValue: 0) {
-                                    self.bottomSheetPosition = hidden
-                                }
-                                
-                                self.closeAction()
-                                
-                                UIApplication.shared.windows.filter{$0.isKeyWindow}.first?.endEditing(true)
+                                closeSheet()
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.tertiaryLabel)
@@ -124,7 +129,17 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
         }
     }
     
-    
+
+    private func closeSheet() {
+        if let hidden = bottomSheetPositionEnum(rawValue: 0) {
+            self.bottomSheetPosition = hidden
+        }
+
+        self.closeAction()
+
+        UIApplication.shared.windows.filter{$0.isKeyWindow}.first?.endEditing(true)
+    }
+
     private func switchPositionIndicator() -> Void {
         if self.bottomSheetPosition.rawValue != 0 {
             
@@ -152,7 +167,9 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
                 } else if height <= -0.3 {
                     self.bottomSheetPosition = self.allCases[self.allCases.endIndex - 1]
                 } else if height >= 0.1 && height < 0.3 {
-                    if currentIndex > self.allCases.startIndex, self.allCases[currentIndex - 1].rawValue != 0 {
+                    if currentIndex > self.allCases.startIndex, (self.allCases[currentIndex - 1].rawValue != 0 && !swipeToDismiss) {
+                        self.bottomSheetPosition = self.allCases[currentIndex - 1]
+                    } else if currentIndex > self.allCases.startIndex && swipeToDismiss {
                         self.bottomSheetPosition = self.allCases[currentIndex - 1]
                     }
                 } else if height >= 0.3 {
@@ -161,8 +178,11 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
                     } else {
                         self.bottomSheetPosition = self.allCases[self.allCases.startIndex + 1]
                     }
+                } else if height <= 1 && swipeToDismiss {
+                    if currentIndex > self.allCases.startIndex {
+                        self.bottomSheetPosition = self.allCases[currentIndex - 1]
+                    }
                 }
-                
             }
         }
     }
@@ -176,11 +196,13 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
     }
     
     
-    fileprivate init(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, @ViewBuilder headerContent: () -> hContent?, @ViewBuilder mainContent: () -> mContent, closeAction: @escaping () -> () = {}) {
+    fileprivate init(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, swipeToDismiss: Bool = false, tapToDismiss: Bool = false, @ViewBuilder headerContent: () -> hContent?, @ViewBuilder mainContent: () -> mContent, closeAction: @escaping () -> () = {}) {
         self._bottomSheetPosition = bottomSheetPosition
         self.hasBottomPosition = hasBottomPosition
         self.resizeable = resizeable
         self.showCancelButton = showCancelButton
+        self.swipeToDismiss = swipeToDismiss
+        self.tapToDismiss = tapToDismiss
         self.headerContent = headerContent()
         self.mainContent = mainContent()
         self.closeAction = closeAction
@@ -188,28 +210,28 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, bottomSheetPo
 }
 
 fileprivate extension BottomSheetView where hContent == ModifiedContent<ModifiedContent<Text, _EnvironmentKeyWritingModifier<Optional<Int>>>, _PaddingLayout> {
-    init(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, title: String? = nil, @ViewBuilder content: () -> mContent, closeAction: @escaping () -> () = {}) {
+    init(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, swipeToDismiss: Bool = false, tapToDismiss: Bool = false, title: String? = nil, @ViewBuilder content: () -> mContent, closeAction: @escaping () -> () = {}) {
         if title == nil {
-            self.init(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, headerContent: { return nil }, mainContent: content, closeAction: closeAction)
+            self.init(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, swipeToDismiss: swipeToDismiss, tapToDismiss: tapToDismiss, headerContent: { return nil }, mainContent: content, closeAction: closeAction)
         } else {
-            self.init(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, headerContent: { return Text(title!)
+            self.init(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, swipeToDismiss: swipeToDismiss, tapToDismiss: tapToDismiss,headerContent: { return Text(title!)
                         .font(.title).bold().lineLimit(1).padding(.bottom) as? hContent }, mainContent: content, closeAction: closeAction)
         }
     }
 }
 
 public extension View {
-    func bottomSheet<hContent: View, mContent: View, bottomSheetPositionEnum: RawRepresentable>(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, @ViewBuilder headerContent: () -> hContent?, @ViewBuilder mainContent: () -> mContent, closeAction: @escaping () -> () = {}) -> some View where bottomSheetPositionEnum.RawValue == CGFloat, bottomSheetPositionEnum: CaseIterable {
+    func bottomSheet<hContent: View, mContent: View, bottomSheetPositionEnum: RawRepresentable>(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, swipeToDismiss: Bool = false, tapToDismiss: Bool = false, @ViewBuilder headerContent: () -> hContent?, @ViewBuilder mainContent: () -> mContent, closeAction: @escaping () -> () = {}) -> some View where bottomSheetPositionEnum.RawValue == CGFloat, bottomSheetPositionEnum: CaseIterable {
         ZStack {
             self
-            BottomSheetView(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, headerContent: headerContent, mainContent: mainContent, closeAction: closeAction)
+            BottomSheetView(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, swipeToDismiss: swipeToDismiss, tapToDismiss: tapToDismiss,headerContent: headerContent, mainContent: mainContent, closeAction: closeAction)
         }
     }
     
-    func bottomSheet<mContent: View, bottomSheetPositionEnum: RawRepresentable>(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, title: String? = nil, @ViewBuilder content: () -> mContent, closeAction: @escaping () -> () = {}) -> some View where bottomSheetPositionEnum.RawValue == CGFloat, bottomSheetPositionEnum: CaseIterable {
+    func bottomSheet<mContent: View, bottomSheetPositionEnum: RawRepresentable>(bottomSheetPosition: Binding<bottomSheetPositionEnum>, hasBottomPosition: Bool = true, resizeable: Bool = true, showCancelButton: Bool = false, swipeToDismiss: Bool = false, tapToDismiss: Bool = false, title: String? = nil, @ViewBuilder content: () -> mContent, closeAction: @escaping () -> () = {}) -> some View where bottomSheetPositionEnum.RawValue == CGFloat, bottomSheetPositionEnum: CaseIterable {
         ZStack {
             self
-            BottomSheetView(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, title: title, content: content, closeAction: closeAction)
+            BottomSheetView(bottomSheetPosition: bottomSheetPosition, hasBottomPosition: hasBottomPosition, resizeable: resizeable, showCancelButton: showCancelButton, swipeToDismiss: swipeToDismiss, tapToDismiss: tapToDismiss,title: title, content: content, closeAction: closeAction)
         }
     }
 }
