@@ -136,11 +136,8 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, Background: V
     
 
     private func closeSheet() {
-        if let hidden = bottomSheetPositionEnum(rawValue: 0) {
-            self.bottomSheetPosition = hidden
-        }
-
-        self.closeAction()
+        switchPosition(with: 0)
+        closeAction()
 
         UIApplication.shared.windows.filter{$0.isKeyWindow}.first?.endEditing(true)
     }
