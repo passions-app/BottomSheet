@@ -104,7 +104,7 @@ fileprivate struct BottomSheetView<hContent: View, mContent: View, Background: V
             .edgesIgnoringSafeArea(.bottom)
             .background(
                 EffectView(effect: UIBlurEffect(style: .systemMaterial))
-                    .cornerRadius(10, corners: [.topRight, .topLeft])
+                    .cornerRadius(20, corners: [.topRight, .topLeft])
                     .edgesIgnoringSafeArea(.bottom)
                     .gesture(
                         DragGesture()
