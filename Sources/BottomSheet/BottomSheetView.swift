@@ -188,9 +188,7 @@ internal struct BottomSheetView<hContent: View, mContent: View, bottomSheetPosit
     }
     
     private func closeSheet() -> Void {
-        if let hidden = bottomSheetPositionEnum(rawValue: 0) {
-            self.bottomSheetPosition = hidden
-        }
+        switchPosition(with: 0)
         
         self.endEditing()
     }
@@ -224,7 +222,9 @@ internal struct BottomSheetView<hContent: View, mContent: View, bottomSheetPosit
                 } else if height <= -0.3 {
                     self.bottomSheetPosition = self.allCases[self.allCases.endIndex - 1]
                 } else if height >= 0.1 && height < 0.3 {
-                    if currentIndex > self.allCases.startIndex && (self.allCases[currentIndex - 1].rawValue != 0 || (self.allCases[currentIndex - 1].rawValue == 0 && self.options.swipeToDismiss))  {
+                    if currentIndex > self.allCases.startIndex, (self.allCases[currentIndex - 1].rawValue != 0 && !self.options.swipeToDismiss) {
+                        self.bottomSheetPosition = self.allCases[currentIndex - 1]
+                    } else if currentIndex > self.allCases.startIndex && self.options.swipeToDismiss {
                         self.bottomSheetPosition = self.allCases[currentIndex - 1]
                     }
                 } else if height >= 0.3 {
@@ -233,8 +233,11 @@ internal struct BottomSheetView<hContent: View, mContent: View, bottomSheetPosit
                     } else {
                         self.bottomSheetPosition = self.allCases[self.allCases.startIndex + 1]
                     }
+                } else if height <= 1 && self.options.swipeToDismiss {
+                    if currentIndex > self.allCases.startIndex {
+                        self.bottomSheetPosition = self.allCases[currentIndex - 1]
+                    }
                 }
-                
             }
         }
         
