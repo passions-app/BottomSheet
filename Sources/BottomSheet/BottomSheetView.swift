@@ -188,9 +188,7 @@ internal struct BottomSheetView<hContent: View, mContent: View, bottomSheetPosit
     }
     
     private func closeSheet() -> Void {
-        if let hidden = bottomSheetPositionEnum(rawValue: 0) {
-            self.bottomSheetPosition = hidden
-        }
+        switchPosition(with: 0)
         
         self.endEditing()
     }
